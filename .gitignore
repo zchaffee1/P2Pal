@@ -1,0 +1,10 @@
+# Ignore Rust build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
+.rust_info.json
+/build/
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
