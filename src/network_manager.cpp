@@ -8,9 +8,18 @@ bool operator<(const QHostAddress& a, const QHostAddress& b) {
 }
 
 NetworkManager::NetworkManager(quint16 port, QObject* parent) 
-  : QObject(parent), listenPort(port), instanceId(QUuid::createUuid()) {
-    udpSocket.bind(port, QUdpSocket::ShareAddress);
+    : QObject(parent), listenPort(port), instanceId(QUuid::createUuid()) {
+    // Remove ShareAddress flag for exclusive port binding
+    if (!udpSocket.bind(port, QUdpSocket::DefaultForPlatform)) {
+        qCritical() << "Failed to bind to port" << port << "Error:" << udpSocket.errorString();
+        exit(1);
+    }
+    //udpSocket.bind(port, QUdpSocket::ShareAddress);
     connect(&udpSocket, &QUdpSocket::readyRead, this, &NetworkManager::readPendingDatagrams);
+
+    qDebug() << "Network manager initialized on port" << port 
+      << "with address" << udpSocket.localAddress().toString()
+      << "Socket state:" << udpSocket.state();
 
     // Set up a resend timer for unacknowledged messages
     resendTimer.setInterval(2000);
@@ -26,17 +35,19 @@ NetworkManager::NetworkManager(quint16 port, QObject* parent)
 
 // Broadcasts a presence announcement with local address and port
 void NetworkManager::announcePresence() {
-  Message announcement(
-      udpSocket.localAddress().toString(),  // Store IP in chatText
-      instanceId,
-      listenPort  // Store port in sequence number
-      );
-
-  QByteArray datagram;
-  QDataStream stream(&datagram, QIODevice::WriteOnly);
-  stream << announcement.toVariantMap();
-
-  udpSocket.writeDatagram(datagram, QHostAddress::Broadcast, listenPort);
+    // Use loopback address for local testing
+    Message announcement(
+        udpSocket.localAddress().toString(),
+        instanceId,
+        listenPort
+    );
+    
+    QByteArray datagram;
+    QDataStream stream(&datagram, QIODevice::WriteOnly);
+    stream << announcement.toVariantMap();
+    
+    // Broadcast to local network segment
+    udpSocket.writeDatagram(datagram, QHostAddress("127.255.255.255"), listenPort);
 }
 
 // Destructor sends a goodbye message and cleans up pending messages

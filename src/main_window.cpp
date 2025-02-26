@@ -4,12 +4,12 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-// Main window that handles the UI and connects to the chat session
-MainWindow::MainWindow(QWidget* parent) 
+// Modified constructor to accept port
+MainWindow::MainWindow(quint16 port, QWidget* parent)
     : QMainWindow(parent),
       chatLog(new QTextEdit(this)),
       messageInput(new MessageInput(this)),
-      chatSession(new ChatSession(this)) {
+      chatSession(new ChatSession(port, this)) {  // Pass port to ChatSession
     setupUI();
     connectSignals();
     chatSession->addPeer(QHostAddress::LocalHost, 55000);

@@ -2,12 +2,12 @@
 #include <QJsonObject>
 #include "chat_session.h"
 
-ChatSession::ChatSession(QObject* parent) 
+ChatSession::ChatSession(quint16 port, QObject* parent)
   : QObject(parent),
   m_originId(QUuid::createUuid()),
   m_sequenceNumber(1),
-  network(new NetworkManager()),
-  antiEntropyTimer(new QTimer(this)) {
+  network(new NetworkManager(port, this)),  // Pass port to NetworkManager
+  antiEntropyTimer(new QTimer(this)) {  
     antiEntropyTimer.setInterval(10000);
     connect(&antiEntropyTimer, &QTimer::timeout, 
         this, &ChatSession::performAntiEntropy);

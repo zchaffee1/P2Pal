@@ -9,7 +9,8 @@
 class ChatSession : public QObject {
   Q_OBJECT
   public:
-    explicit ChatSession(QObject* parent = nullptr);
+    explicit ChatSession(quint16 port, QObject* parent = nullptr);
+//    explicit ChatSession(QObject* parent = nullptr);
     QUuid originId() const { return m_originId; }
 
     void addPeer(const QHostAddress& address, quint16 port);
