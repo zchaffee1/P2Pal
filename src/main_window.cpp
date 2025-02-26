@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+// Main window that handles the UI and connects to the chat session
 MainWindow::MainWindow(QWidget* parent) 
     : QMainWindow(parent),
       chatLog(new QTextEdit(this)),
@@ -11,8 +12,10 @@ MainWindow::MainWindow(QWidget* parent)
       chatSession(new ChatSession(this)) {
     setupUI();
     connectSignals();
+    chatSession->addPeer(QHostAddress::LocalHost, 55000);
 }
 
+// Sets up the UI layout with the chat log and message input
 void MainWindow::setupUI() {
     QWidget* centralWidget = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(centralWidget);
@@ -27,7 +30,7 @@ void MainWindow::setupUI() {
     resize(600, 400);
 }
 
-// In main_window.cpp
+// Connects signals to the respective slots for sending/receiving messages
 void MainWindow::connectSignals() {
     // Proper connection syntax
     connect(messageInput, &MessageInput::messageSent,
@@ -38,6 +41,7 @@ void MainWindow::connectSignals() {
             this, &MainWindow::displayMessage);
 }
 
+// Displays a received message in the chat log, formatted with UUID and sequence
 void MainWindow::displayMessage(const Message& message) {
     QString formatted = QString("[%1 #%2] %3")
         .arg(message.origin().toString().left(8))  // Shorten UUID for display

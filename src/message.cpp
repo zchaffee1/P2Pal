@@ -12,6 +12,7 @@ quint64 Message::sequence() const { return m_sequence; }
 
 void Message::setChatText(const QString& text) { m_chatText = text; }
 
+// Converts the message to a QVariantMap for easy serialization
 QVariantMap Message::toVariantMap() const {
     return {
         {"chatText", m_chatText},
@@ -20,6 +21,7 @@ QVariantMap Message::toVariantMap() const {
     };
 }
 
+// Converts a QVariantMap back into a Message object
 Message Message::fromVariantMap(const QVariantMap& map) {
     return Message(
         map["chatText"].toString(),

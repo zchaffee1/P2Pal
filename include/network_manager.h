@@ -30,13 +30,13 @@ private:
     QTimer resendTimer;
     quint16 listenPort;
     
-    QMap<QUuid, QPair<QHostAddress, quint16>> peers;  // UUID -> (Address, Port)
+    QMap<QUuid, QPair<QHostAddress, quint16>> peers;  
     QMap<quint64, QPair<Message*, QDateTime>> pendingMessages;
     
     void serializeAndSend(const Message& message, const QHostAddress& target, quint16 port);
     Message deserializeDatagram(const QByteArray& data);
 
-    void handlePeerDiscovery(const Message& message);
+    void handlePeerDiscovery(const Message& message, const QHostAddress& senderAddress, quint16 senderPort);
     QTimer announcementTimer;
     QUuid instanceId;
 };

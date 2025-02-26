@@ -6,14 +6,24 @@
 #include <QUuid>
 
 class Message : public QObject {
-    Q_OBJECT
-    Q_PROPERTY(QString chatText READ chatText WRITE setChatText)
-    Q_PROPERTY(QUuid origin READ origin)
-    Q_PROPERTY(quint64 sequence READ sequence)
+  //    Q_OBJECT
+  //    Q_PROPERTY(QString chatText READ chatText WRITE setChatText)
+  //    Q_PROPERTY(QUuid origin READ origin)
+  //    Q_PROPERTY(quint64 sequence READ sequence)
 
-public:
+  public:
+    Message();
+    // Removed the ambiguous three-argument constructor
+
+    Message(const Message& other);   
+    Message& operator=(const Message& other);
+
     explicit Message(QObject* parent = nullptr);
-    Message(const QString& text, const QUuid& origin, quint64 seq, QObject* parent = nullptr);
+    explicit Message(const QString& text, 
+        const QUuid& origin, 
+        quint64 seq,
+        QObject* parent = nullptr);
+    ~Message() = default;
 
     QString chatText() const;
     QUuid origin() const;
@@ -24,9 +34,10 @@ public:
     QVariantMap toVariantMap() const;
     static Message fromVariantMap(const QVariantMap& map);
 
-private:
+  private:
     QString m_chatText;
     QUuid m_origin;
     quint64 m_sequence;
 };
+
 #endif

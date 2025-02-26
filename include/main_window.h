@@ -3,7 +3,7 @@
 #define MAIN_WINDOW_H
 
 #include <QMainWindow>
-#include "chat_session.h"  // Add this include
+#include "chat_session.h"   
 
 class QTextEdit;
 class MessageInput;
@@ -16,10 +16,10 @@ public:
 private:
     void setupUI();
     void connectSignals();
-    void displayMessage(const Message& message);  // Add this declaration
+    void displayMessage(const Message& message);
 
     QTextEdit* chatLog;
     MessageInput* messageInput;
-    ChatSession* chatSession;  // Now properly declared
+    ChatSession* chatSession;
 };
 #endif // MAIN_WINDOW_H

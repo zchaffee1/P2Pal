@@ -12,16 +12,19 @@ NetworkManager::NetworkManager(quint16 port, QObject* parent)
     udpSocket.bind(port, QUdpSocket::ShareAddress);
     connect(&udpSocket, &QUdpSocket::readyRead, this, &NetworkManager::readPendingDatagrams);
     
+    // Set up a resend timer for unacknowledged messages
     resendTimer.setInterval(2000);
     connect(&resendTimer, &QTimer::timeout, this, &NetworkManager::resendUnacknowledged);
     resendTimer.start();
 
+    // Set up an announcement timer for broadcasting presence
     announcementTimer.setInterval(5000);
     connect(&announcementTimer, &QTimer::timeout, 
             this, &NetworkManager::announcePresence);
     announcementTimer.start();
 }
 
+// Broadcasts a presence announcement with local address and port
 void NetworkManager::announcePresence() {
     Message announcement(
         udpSocket.localAddress().toString(),  // Store IP in chatText
@@ -33,24 +36,24 @@ void NetworkManager::announcePresence() {
     QDataStream stream(&datagram, QIODevice::WriteOnly);
     stream << announcement.toVariantMap();
     
-    // Broadcast to all potential peers
     udpSocket.writeDatagram(datagram, QHostAddress::Broadcast, listenPort);
 }
 
+// Destructor sends a goodbye message and cleans up pending messages
 NetworkManager::~NetworkManager() {
   Message goodbye("GOODBYE", instanceId, 0);
   serializeAndSend(goodbye, QHostAddress::Broadcast, listenPort);
 
-  // Clean up pending messages
   for (auto& pair : pendingMessages) {
     delete pair.first;
   }
   pendingMessages.clear();
 }
 
+// Adds a new peer to the list if not already present
 void NetworkManager::addPeer(const QHostAddress& address, quint16 port) {
-    // Convert address to string for UUID key (temporary)
-    QUuid tempId = QUuid::createUuid(); // Should be replaced with actual UUID exchange
+    // Convert address to string for UUID key 
+    QUuid tempId = QUuid::createUuid(); 
     
     if (!peers.contains(tempId)) {
         qDebug() << "Discovered new peer:" << address << ":" << port;
@@ -59,10 +62,10 @@ void NetworkManager::addPeer(const QHostAddress& address, quint16 port) {
     }
 }
 
+// Sends a message to all known peers
 void NetworkManager::sendMessage(const Message& message) {
     Message* msgCopy = new Message(message);
     
-    // Iterate through all known peers
     for (auto peer = peers.begin(); peer != peers.end(); ++peer) {
         const QHostAddress& targetAddress = peer.value().first;
         quint16 targetPort = peer.value().second;
@@ -73,6 +76,7 @@ void NetworkManager::sendMessage(const Message& message) {
         qMakePair(msgCopy, QDateTime::currentDateTime()));
 }
 
+// Serializes and sends the message to a target address and port
 void NetworkManager::serializeAndSend(const Message& message, 
                                     const QHostAddress& target, quint16 port) {
     QByteArray datagram;
@@ -81,48 +85,47 @@ void NetworkManager::serializeAndSend(const Message& message,
     udpSocket.writeDatagram(datagram, target, port);
 }
 
+// Reads incoming datagrams and processes the message
 void NetworkManager::readPendingDatagrams() {
     while (udpSocket.hasPendingDatagrams()) {
         QNetworkDatagram datagram = udpSocket.receiveDatagram();
         Message message = deserializeDatagram(datagram.data());
 
-        if (message.chatText() == udpSocket.localAddress().toString()) {
-            continue; // Ignore own messages
-        }
+        if (message.origin() == instanceId) continue; // Ignore own messages
 
         if (message.sequence() == listenPort) { // Presence announcement
-            handlePeerDiscovery(message);
-        } else {
+            handlePeerDiscovery(message, 
+                               datagram.senderAddress(), 
+                               datagram.senderPort());
+        }
+        else {
             emit newMessageReceived(message);
         }
-        
-        // Add peer with actual connection info
-        addPeer(datagram.senderAddress(), datagram.senderPort());
     }
 }
 
-void NetworkManager::handlePeerDiscovery(const Message& message) {
+// Handles the discovery of a new peer by adding it to the list
+void NetworkManager::handlePeerDiscovery(const Message& message,
+                                       const QHostAddress& senderAddress,
+                                       quint16 senderPort) {
     const QUuid& peerId = message.origin();
     
     if (!peers.contains(peerId)) {
-        // Extract address and port from presence message
-        QHostAddress peerAddress(message.chatText());
-        quint16 peerPort = static_cast<quint16>(message.sequence());
+        peers.insert(peerId, qMakePair(senderAddress, senderPort));
+        qDebug() << "Discovered peer:" << peerId.toString() 
+                 << "at" << senderAddress << ":" << senderPort;
         
-        peers.insert(peerId, qMakePair(peerAddress, peerPort));
-        
-        // Forward to other peers
-        for (auto existingPeer = peers.begin(); existingPeer != peers.end(); ++existingPeer) {
-            if (existingPeer.key() != peerId) {
-                serializeAndSend(message, 
-                               existingPeer.value().first,  // Address
-                               existingPeer.value().second  // Port
-                );
+        for (const auto& existingPeer : peers) {
+            if (existingPeer.first != peerId) {
+                serializeAndSend(message,
+                               existingPeer.second.first,
+                               existingPeer.second.second);
             }
         }
     }
 }
 
+// Deserializes a datagram into a Message object
 Message NetworkManager::deserializeDatagram(const QByteArray& data) {
     QDataStream stream(data);
     QVariantMap variantMap;
